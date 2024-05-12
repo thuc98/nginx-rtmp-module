@@ -866,6 +866,7 @@ ngx_rtmp_hls_close_fragment(ngx_rtmp_session_t *s)
         ct.buf_size = 0;
         ct.log =  s->connection->log; 
         ct.access = NGX_FILE_DEFAULT_ACCESS;
+        ct.time =  ngx_cached_time->sec;
         ngx_copy_file(ctx->stream.data, ctx->stream_rename.data,&ct );
     }
  
@@ -2245,9 +2246,9 @@ ngx_rtmp_hls_cleanup_dir(ngx_str_t *ppath, ngx_msec_t playlen)
         if (!ngx_de_is_file(&dir)) {
             continue;
         }
-        
+         
         if (name.len >= 3 && nginx_is_segment_name(name.data + name.len ) ) {
-            max_age = playlen / 500;
+            max_age = playlen / 500; 
         }
         else if (name.len >= 3 && name.data[name.len - 3] == '.' &&
                              name.data[name.len - 2] == 't' &&
