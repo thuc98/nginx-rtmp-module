@@ -23,9 +23,11 @@ char nginx_is_segment_name(u_char *name) {
         
     for (i = 0; i < EXT_LEN; i++) {
         memset(name_ext, 0, MAX_EXT_STR_LEN);
+
+       
         char * ext = exts[i];
         int ext_len = strlen(ext);
-        memcpy(name_ext, name - ext_len + 1,ext_len );
+        memcpy(name_ext, name - ext_len ,ext_len ); 
         if (strcmp(name_ext, ext) == 0) {
             return 1;
         }

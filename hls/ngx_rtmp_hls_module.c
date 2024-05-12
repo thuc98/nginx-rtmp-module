@@ -2245,8 +2245,11 @@ ngx_rtmp_hls_cleanup_dir(ngx_str_t *ppath, ngx_msec_t playlen)
         if (!ngx_de_is_file(&dir)) {
             continue;
         }
-
-        if (name.len >= 3 && name.data[name.len - 3] == '.' &&
+        
+        if (name.len >= 3 && nginx_is_segment_name(name.data + name.len ) ) {
+            max_age = playlen / 500;
+        }
+        else if (name.len >= 3 && name.data[name.len - 3] == '.' &&
                              name.data[name.len - 2] == 't' &&
                              name.data[name.len - 1] == 's')
         {
