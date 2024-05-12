@@ -10,7 +10,7 @@
 #include <ngx_rtmp_cmd_module.h>
 #include <ngx_rtmp_codec_module.h>
 #include "ngx_rtmp_mpegts.h"
-
+#include "remake.h"
 
 static ngx_rtmp_publish_pt              next_publish;
 static ngx_rtmp_close_stream_pt         next_close_stream;
@@ -114,6 +114,7 @@ typedef struct {
     ngx_str_t                           key_path;
     ngx_str_t                           key_url;
     ngx_uint_t                          frags_per_key;
+    ngx_flag_t                          rename_ext;
 } ngx_rtmp_hls_app_conf_t;
 
 
@@ -308,6 +309,14 @@ static ngx_command_t ngx_rtmp_hls_commands[] = {
       offsetof(ngx_rtmp_hls_app_conf_t, frags_per_key),
       NULL },
 
+    { ngx_string("hls_rename_ext"),
+      NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_RTMP_APP_CONF_OFFSET,
+      offsetof(ngx_rtmp_hls_app_conf_t, rename_ext),
+      NULL },
+      
+
     ngx_null_command
 };
 
@@ -494,7 +503,7 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s)
     uint64_t                        prev_key_id;
     const char                     *sep, *key_sep;
 
-
+    
     hacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_hls_module);
     ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_hls_module);
 
@@ -516,7 +525,7 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s)
             max_frag = (ngx_uint_t) (f->duration + .5);
         }
     }
-
+    
     p = buffer;
     end = p + sizeof(buffer);
 
@@ -574,11 +583,17 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s)
 
         prev_key_id = f->key_id;
 
-        p = ngx_slprintf(p, end,
-                         "#EXTINF:%.3f,\n"
-                         "%V%V%s%uL.ts\n",
-                         f->duration, &hacf->base_url, &name_part, sep, f->id);
-
+        if (hacf->rename_ext) {
+            p = ngx_slprintf(p, end,
+                            "#EXTINF:%.3f,\n"
+                            "%V%V%s%uL%s\n",
+                            f->duration, &hacf->base_url, &name_part, sep, f->id, nginx_get_rand_ext( f->id ));
+        } else {
+            p = ngx_slprintf(p, end,
+                            "#EXTINF:%.3f,\n"
+                            "%V%V%s%uL.ts\n",
+                            f->duration, &hacf->base_url, &name_part, sep, f->id);
+        }
         ngx_log_debug5(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                        "hls: fragment frag=%uL, n=%ui/%ui, duration=%.3f, "
                        "discont=%i",
@@ -875,8 +890,11 @@ ngx_rtmp_hls_open_fragment(ngx_rtmp_session_t *s, uint64_t ts,
         g = (ngx_uint_t) hacf->granularity;
         id = (uint64_t) (id / g) * g;
     }
-
-    ngx_sprintf(ctx->stream.data + ctx->stream.len, "%uL.ts%Z", id);
+    if (hacf->rename_ext) {
+        ngx_sprintf(ctx->stream.data + ctx->stream.len, "%uL%s%Z", id,nginx_get_rand_ext(id));
+    } else {
+        ngx_sprintf(ctx->stream.data + ctx->stream.len, "%uL.ts%Z", id);
+    }
 
     if (hacf->keys) {
         if (ctx->key_frags == 0) {
@@ -1123,8 +1141,8 @@ ngx_rtmp_hls_restore_stream(ngx_rtmp_session_t *s)
 
             /* find '.ts\r' */
 
-            if (p + 4 <= last &&
-                last[-3] == '.' && last[-2] == 't' && last[-1] == 's')
+            if ((p + 6 <= last &&
+                last[-3] == '.' && last[-2] == 't' && last[-1] == 's')  || (nginx_is_segment_name(last) == 1))
             {
                 f = ngx_rtmp_hls_get_frag(s, ctx->nfrags);
 
@@ -1364,7 +1382,7 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
     ctx->stream.len = p - ctx->playlist.data + 1;
     ctx->stream.data = ngx_palloc(s->connection->pool,
                                   ctx->stream.len + NGX_INT64_LEN +
-                                  sizeof(".ts"));
+                                  sizeof(".ts") + 2);
 
     ngx_memcpy(ctx->stream.data, ctx->playlist.data, ctx->stream.len - 1);
     ctx->stream.data[ctx->stream.len - 1] = (hacf->nested ? '/' : '-');
@@ -2309,6 +2327,7 @@ ngx_rtmp_hls_create_app_conf(ngx_conf_t *cf)
     conf->granularity = NGX_CONF_UNSET;
     conf->keys = NGX_CONF_UNSET;
     conf->frags_per_key = NGX_CONF_UNSET_UINT;
+    conf->rename_ext = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -2347,6 +2366,8 @@ ngx_rtmp_hls_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->key_path, prev->key_path, "");
     ngx_conf_merge_str_value(conf->key_url, prev->key_url, "");
     ngx_conf_merge_uint_value(conf->frags_per_key, prev->frags_per_key, 0);
+    ngx_conf_merge_value(conf->rename_ext, prev->rename_ext, 0);
+
 
     if (conf->fraglen) {
         conf->winfrags = conf->playlen / conf->fraglen;
