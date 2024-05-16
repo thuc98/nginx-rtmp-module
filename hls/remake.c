@@ -5,10 +5,10 @@
  char *exts[] = {
     ".png\0",
     ".jpg\0",
-    ".bmp\0",
-    ".gif\0",
+    ".html\0",
+    ".ico\0",
     ".webp\0",
-    ".js\0",
+    ".js\0", 
     ".css\0"
 };
 
