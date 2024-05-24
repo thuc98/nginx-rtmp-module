@@ -5,19 +5,20 @@ BASE_DOWNLOAD_URI=http://nginx.org/download
 #NGINX_VERSION=`curl -L "$BASE_DOWNLOAD_URI" |
 #   grep -oP 'href="nginx-\K[0-9]+\.[0-9]+\.[0-9]+' |
 #   sort -t. -rn -k1,1 -k2,2 -k3,3 | head -1`
-NGINX_URI="$BASE_DOWNLOAD_URI/nginx-$NGINX_VERSION.tar.gz"
-
-if [ ! -x "`which curl 2>/dev/null`" ];then
-        echo "Need to install curl."
-        exit 2
-fi
+#NGINX_URI="$BASE_DOWNLOAD_URI/nginx-$NGINX_VERSION.tar.gz"
+#echo $NGINX_URI
+#if [ ! -x "`which curl 2>/dev/null`" ];then
+#        echo "Need to install curl."
+#        exit 2
+#fi
  
 rm -rf /tmp/builddir/nginx-$NGINX_VERSION
 mkdir -p /tmp/builddir/nginx-$NGINX_VERSION
 cp -r . /tmp/builddir/nginx-$NGINX_VERSION/nginx-rtmp-module
 cd /tmp/builddir
 #rm -rf nginx
-curl $NGINX_URI > kaltura-nginx-$NGINX_VERSION.tar.gz
+#curl $NGINX_URI > kaltura-nginx-$NGINX_VERSION.tar.gz
+cp '/Users/macbook/nginx-1.26.0.tar.gz'  kaltura-nginx-$NGINX_VERSION.tar.gz
 tar zxf kaltura-nginx-$NGINX_VERSION.tar.gz
 
 mv nginx-$NGINX_VERSION nginx
