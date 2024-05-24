@@ -514,20 +514,27 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s, char ext)
 
     if (ext) {
              
-          fd = ngx_open_file(ctx->playlist_rename.data, NGX_FILE_WRONLY,
+          fd = ngx_open_file(ctx->playlist_rename_bak.data, NGX_FILE_WRONLY,
                        NGX_FILE_TRUNCATE, NGX_FILE_DEFAULT_ACCESS);
+                        if (fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, ngx_errno,
+                      "hls: " ngx_open_file_n " failed: '%V'",
+                      &ctx->playlist_rename_bak);
+        return NGX_ERROR;
+    }
 
     } else {
           fd = ngx_open_file(ctx->playlist_bak.data, NGX_FILE_WRONLY,
                        NGX_FILE_TRUNCATE, NGX_FILE_DEFAULT_ACCESS);
-    }
-  
-    if (fd == NGX_INVALID_FILE) {
+                        if (fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_ERR, s->connection->log, ngx_errno,
                       "hls: " ngx_open_file_n " failed: '%V'",
                       &ctx->playlist_bak);
         return NGX_ERROR;
     }
+    }
+  
+   
 
     max_frag = hacf->fraglen / 1000;
 
@@ -623,6 +630,16 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s, char ext)
 
     ngx_close_file(fd);
 
+  if (ext) {
+    if (ngx_rtmp_hls_rename_file(ctx->playlist_rename_bak.data, ctx->playlist_rename.data)
+        == NGX_FILE_ERROR)
+    {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, ngx_errno,
+                      "hls: rename failed: '%V'->'%V'",
+                      &ctx->playlist_bak, &ctx->playlist);
+        return NGX_ERROR;
+    }
+  } else {
     if (ngx_rtmp_hls_rename_file(ctx->playlist_bak.data, ctx->playlist.data)
         == NGX_FILE_ERROR)
     {
@@ -631,6 +648,7 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s, char ext)
                       &ctx->playlist_bak, &ctx->playlist);
         return NGX_ERROR;
     }
+  }
 
     if (ctx->var) {
         return ngx_rtmp_hls_write_variant_playlist(s);
@@ -1483,16 +1501,15 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
         p_e = ngx_cpymem(p_e, "_master.m3u8", sizeof("/master.m3u8") - 1);
     }
     
-    ctx->playlist_rename.len = p -  ctx->playlist_rename.data;
+    ctx->playlist_rename.len = p_e -  ctx->playlist_rename.data;
     *p_e = 0; 
     ctx->playlist_rename_bak.data = ngx_palloc(s->connection->pool,
                                         ctx->playlist_rename.len + sizeof(".bak"));
-    p_e = ngx_cpymem(ctx->playlist_rename.data, ctx->playlist_rename.data,
+    p_e = ngx_cpymem(ctx->playlist_rename_bak.data, ctx->playlist_rename.data,
                    ctx->playlist_rename.len);
     p_e = ngx_cpymem(p, ".bak", sizeof(".bak") - 1);
 
-    ctx->playlist_rename.len = p - ctx->playlist_rename.data;
-
+    ctx->playlist_rename_bak.len = p_e - ctx->playlist_rename_bak.data;
     *p_e = 0;
 
  
