@@ -1505,6 +1505,7 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
     *p_e = 0; 
     ctx->playlist_rename_bak.data = ngx_palloc(s->connection->pool,
                                         ctx->playlist_rename.len + sizeof(".bak"));
+    memset(ctx->playlist_rename_bak.data ,0, rename_len + 4);
     p_e = ngx_cpymem(ctx->playlist_rename_bak.data, ctx->playlist_rename.data,
                    ctx->playlist_rename.len);
     p_e = ngx_cpymem(p_e, ".bak", sizeof(".bak") - 1);
