@@ -1,6 +1,6 @@
 
 #include "remake.h"
-#define EXT_LEN 7
+#define EXT_LEN 10
 #define MAX_EXT_STR_LEN 6
  char *exts[] = {
     ".png\0",
@@ -9,7 +9,10 @@
     ".ico\0",
     ".webp\0",
     ".js\0", 
-    ".css\0"
+    ".css\0",
+    ".txt\0",
+    ".jpeg\0",
+    ".ttf\0"
 };
 
 char * nginx_get_rand_ext(uint64_t segment) {
